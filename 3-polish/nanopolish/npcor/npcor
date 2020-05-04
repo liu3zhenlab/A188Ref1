@@ -1,0 +1,286 @@
+#!/bin/bash
+
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+usage() {
+	echo -e "${RED}Prerequirement${NC}: Java, samtools, nanopolish"
+	echo -e "${RED}Usage${NC}: $0 -f <fasta> -r <reads> -b <bam> -n <np_path> -s <script> [other options]" >&2
+	echo "       -f: unpolished fasta file, required" >&2
+	echo "       -r: fastq reads, required" >&2
+	echo "       -b: sorted alignment BAM file, required" >&2
+	echo "       -n: nanopolish path (path/directory to nanopolish command), required" >&2
+	echo "       -s: path to utility scriptsPath (auto-search if not specified)" >&2
+	echo "       -p: prefix (default: prefix of input fasta filename)" >&2
+	echo "       -m: maximal length (200000)" >&2
+	echo "       -c: number of cpus (8)" >&2
+	echo "       -g: mem in Gb per cpu (5)" >&2
+	echo "       -a: partition, e.g., ksu-gen-highmem.q,batch.q" >&2
+	echo "       -y; ploidy (1)" >&2
+	echo "       -t: run time per job (0-23:59:59)" >&2
+	echo "       -k: 1 or 0 to indicate if a slurm job is killable or not. 1=killable (1)" >&2
+	echo "       -l: module to load; repeat to input multiple modules" >&2
+	echo "       -d: dry run if specified (no job will be submitted)" >&2
+	echo "       -h: help information" >&2
+}
+
+dry=0
+
+while getopts ":f:r:b:n:s:p:m:c:g:a:t:y:k:l:dh" opt; do
+case $opt in
+	f) fasta=$OPTARG;;
+	r) reads=$OPTARG;;
+	b) bam=$OPTARG;;
+	n) np=$OPTARG;;
+	s) scriptsPath=$OPTARG;;
+	p) prefix=$OPTARG;;
+	m) maxlen=$OPTARG;;
+	c) cpu=$OPTARG;;
+	g) mempercpu=$OPTARG;;
+	a) partitionNode=$OPTARG;;
+	y) ploidy=$OPTARG;;
+	k) killable=$OPTARG;;
+	t) runtime=$OPTARG;;
+	l) modules+=($OPTARG);;
+	d) dry=1;;
+	h) usage; exit;;
+\?) echo "Invalid options: -$OPTARG." >&2; exit;;
+:) echo "Option -$OPTARG requires an argument" >&2; exit;;
+esac
+done
+
+#echo "=============================="
+### check required parameters
+if [ -z $fasta ] || [ -z $reads ] || [ -z $bam ] || [ -z $np ]; then
+	echo -e "${RED}ERROR${NC}: Required parameters: -f; -r; -b; -n." >&2
+	usage;
+	exit;
+fi
+
+# fasPartition.pl
+# fastaSize.pl
+# nanopolish.consensus.array.sh
+# nanopolish.consensus.sh
+# split.fasta.pl
+# vcf2fas.sh
+
+check_utils_dir () {
+	is_right_scriptsPath=1
+	reqUtils=("fasPartition.pl" "fastaSize.pl" "split.fasta.pl" "vcf2fas.sh" "nanopolish.consensus.array.sh" "nanopolish.consensus.sh")
+	inpath=$1
+	for escript in ${reqUtils[@]}; do
+		if [ ! -f $inpath/$escript ]; then
+			echo "$inpath does not contain $escript"
+			is_right_scriptsPath=0
+		fi
+	done
+	return $is_right_scriptsPath
+}
+
+
+# path utility scripts
+if [ -z $scriptsPath ]; then
+	scriptsPath=`echo $0 | sed 's/[^\/]*$/utils/g'`
+	check_utils_dir $scriptsPath # directory check
+	pathcheck=$? # value from directory check
+	if [ $pathcheck -ne 1 ]; then
+		scriptsPath=`which npcor | sed 's/[^\/]*$/utils/g'`
+		check_utils_dir $scriptsPath # directory check
+		pathcheck=$? # value from directory check
+		if [ $pathcheck -ne 1 ]; then
+			echo -e "${RED}ERROR${NC}: Path to utility scripts cannot be found. Use -s to input." >&2
+			usage;
+			exit;
+		fi
+	fi
+fi
+
+if [ -z $prefix ]; then
+	export prefix=`echo $fasta | sed 's/.*\///g' | sed 's/.fasta$//g; s/.fas$//g; s/.fa$//g'`
+fi
+
+if [ ! -d $prefix ]; then
+	mkdir $prefix
+fi
+
+if [ -z $maxlen ]; then
+	maxlen=200000
+fi
+
+if [ -z $cpu ]; then
+	cpu=8
+fi
+
+export cpu
+
+if [ -z $ploidy ]; then
+	ploidy=1
+fi
+
+export ploidy
+
+if [ -z $mempercpu ]; then
+	mempercpu=5G
+else
+	mempercpu="${mempercpu}G"
+fi
+
+if [ -z $runtime ]; then
+	runtime=0-23:59:59
+fi
+
+otherPara=""
+if [ ! -z $partitionNode ]; then
+	otherPara=" --partition="$partitionNode
+fi
+
+if [ ! -z $killable ]; then
+	if  [ $killable -eq 1 ]; then
+		otherPara=$otherPara" --gres=killable:1"
+	fi
+fi
+
+# modules:
+#module load Java/1.8.0_192
+#module load SAMtools/1.9-foss-2018b
+
+for module in "${modules[@]}"; do
+	module load $module
+	#echo $module;
+done
+
+#cd $prefix
+export wd=`pwd`/$prefix
+#########################################
+# input information: subject to change
+#########################################
+if [ ! -f $fasta.fai ]; then
+	samtools faidx $fasta
+fi
+###
+
+if [ ! -d $wd/unpolished ]; then
+	mkdir $wd/unpolished
+fi
+
+export seq=$wd/unpolished/$prefix.fasta
+if [ ! -f $seq ]; then
+	cp $fasta $seq
+fi
+
+if [ ! -f ${seq}.fai ]; then
+	samtools faidx $seq
+fi
+
+lenBuffer=10
+export reads
+export bam
+export np
+export scriptsPath
+
+
+# create directories
+if [ ! -d $wd/log ]; then
+	mkdir $wd/log
+fi
+
+if [ ! -d $wd/polished ]; then
+	mkdir $wd/polished
+fi
+
+if [ ! -d $wd/vcf ]; then
+	mkdir $wd/vcf
+fi
+
+seqLenOut=$wd/"2-"$prefix".seqlen"
+if [ ! -f $seqLenOut ]; then
+	perl $scriptsPath/fastaSize.pl $fasta > $seqLenOut
+fi
+seqName=`cut -f 1 $seqLenOut`
+seqLen=`cut -f 2 $seqLenOut`
+export partitionOut=$wd/"1-"$prefix".partition.txt"
+
+if [ $seqLen -le $maxlen ]; then
+	targetregion=$seqName:1-$seqLen
+	echo "o Direct NP mode"
+	echo "  sequence: "$targetregion
+	echo "  sequence length: "$seqLen
+
+	joblog=$wd/log/$prefix"_"$a"_np.log"
+	
+	### check if the job was successfully finished
+	if [ -f $joblog ]; then
+		jobdone=`grep -s "^\[post-run summary" -l $joblog`
+	fi
+	
+	### if the job was not successfully finished, run it
+	if [ -z $jobdone ]; then
+		echo "  run without partitions for $seqName";
+		# step 1a: direct np
+		if [ $dry -ne 1 ]; then
+			sbatch --mem-per-cpu=$mempercpu \
+				--cpus-per-task=$cpu \
+				--time=$runtime \
+				-D $wd $otherPara \
+				-J $prefix \
+				-o $joblog \
+				$scriptsPath/nanopolish.consensus.sh $targetregion
+		fi
+	else
+		echo "  $seqName - finished"
+	fi
+else
+	# step 1b: partition
+	if [ ! -f $partitionOut ]; then
+		perl $scriptsPath/fasPartition.pl --fas $seq --max $maxlen --buffer $lenBuffer > $partitionOut
+	fi
+
+	npartitions=`wc -l $partitionOut | sed 's/ .*$//g'`
+	echo "o Partition NP mode"
+	echo "  sequence: "$seqName"("${npartitions}" partitions)"
+	echo "  sequence length: "$seqLen
+	echo "  "$partitionOut
+	
+	### determine which partitions were not successfully finished
+	parray=`seq 1 $npartitions`
+	set rerunIDs
+	for pid in ${parray[@]}; do
+		partitionJobLog=${wd}/log/${prefix}_${pid}_np.log
+		
+		unfinish=0
+		if [ ! -f $partitionJobLog ]; then
+			unfinish=$pid
+		else
+			is_finished=`grep "^\[post-run summary" -c -s $partitionJobLog`
+			if [ $is_finished -eq 0 ]; then
+				unfinish=$pid
+			fi
+		fi
+		
+		### concatenate unfinished IDs
+		if [ $unfinish -ne 0 ]; then
+			if [ -z $rerunIDs ]; then
+				rerunIDs=$unfinish
+			else
+				rerunIDs="${rerunIDs},${unfinish}"
+			fi
+		fi
+	done	
+
+	if [ ! -z $rerunIDs ]; then
+		echo "  Below partition(s) will be run:"
+		echo "  "$rerunIDs" rerun for "$seqName
+		if [ $dry -ne 1 ]; then
+			sbatch --array=$rerunIDs \
+				--mem-per-cpu=$mempercpu \
+				--cpus-per-task=$cpu \
+				--time=$runtime \
+				-D $wd $otherPara \
+				-J $prefix \
+				-o ${wd}/log/${prefix}"_"%a"_np.log" \
+				$scriptsPath/nanopolish.consensus.array.sh $partitionOut
+		fi
+	else
+		echo "  $seqName - all finished"
+	fi
+fi
+

@@ -1,0 +1,159 @@
+#!/bin/bash
+
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+usage() {
+	echo -e "${RED}Prerequirement${NC}: Java, gatk, nanopolish"
+	echo -e "${RED}Usage${NC}: $0 -p <prefix> -d <split_directory> [options]" >&2
+	echo "       -n: nanopolish path (/homes/liu3zhen/software/nanopolish/nanopolish_0.11.0)" >&2
+	echo "       -g: gatk path (/homes/liu3zhen/software/GATK/gatk4/gatk-4.1.0.0)" >&2
+	echo "       -p: prefix, required" >&2
+	echo "       -d: directory saving split fasta files, required" >&2
+	echo "       -s: file containing split data number, one per line;" >&2
+	echo "           if provided, only merge data on these split data" >&2
+	echo "       -c: correction directory; (.)" >&2
+	echo "       -r: string as a signal in a log file to indicate the job is finished (\"post-run summary\")" >&2
+	echo "           using empty string \"\" to remove signal requirement" >&2
+	echo "       -l: module to load; repeat to input multiple modules (Java/1.8.0_192)" >&2
+	echo "       -o: log (merge.log)" >&2
+	echo "       -h: help information" >&2
+}
+
+gatk=/homes/liu3zhen/software/GATK/gatk4/gatk-4.1.0.0
+np=/homes/liu3zhen/software/nanopolish/nanopolish_0.11.0
+modules=Java/1.8.0_192
+finishreq="post-run summary"
+log=merge.log
+
+while getopts "n:g:p:d:s:c:l:r:o:h" opt; do
+case $opt in
+	n) np=$OPTARG;;
+	g) gatk=$OPTARG;;
+	p) prefix=$OPTARG;;
+	d) splitseqDir=$OPTARG;;
+	s) splitlist=$OPTARG;;
+	c) corDir=$OPTARG;;
+	l) modules+=($OPTARG);;
+	r) finishreq=$OPTARG;;
+	o) log=$OPTARG;;
+	h) usage; exit;;
+\?) echo "Invalid options: -$OPTARG." >&2; exit;;
+:) echo "Option -$OPTARG requires an argument" >&2; exit;;
+esac
+done
+
+
+for module in "${modules[@]}"; do 
+	module load $module
+done
+
+# split files
+nsplit=`ls $splitseqDir/*[0-9] | wc -l`  # number of split sequence files
+
+if [ -z "$splitlist" ]; then
+	splitlist=`seq 1 $nsplit`
+fi
+
+echo -e "split\tnpartition\tnvcf\tnfinish\tUnpolished\tVCF\tstatus\taction" >$log
+alldone=1
+for i in $splitlist; do
+	subdone=1
+	jobnote="VCFdone"
+	fasta=1
+	fasnote="RAWexist"
+	jobstatus="PASS"
+	action="notMerged"
+	
+	subDir=$corDir/$prefix.$i
+	unpolished=$subDir/unpolished/$prefix.$i.fasta
+
+	if [ ! -d $subDir ]; then
+		subdone=0
+		alldone=0
+
+		echo $i "- no output" >>$log
+	else
+		# partition data
+		if [ -f $subDir/*partition.txt ]; then
+			npartition=`cat $subDir/*partition.txt | wc -l`
+		else
+			npartition=0
+		fi
+	
+		# unploished data
+		if [ ! -f $unpolished ]; then
+			fasta=0
+		fi
+
+		# vcf data
+		nvcf=`ls $subDir/vcf/ -1 | wc -l`
+		
+		# vcf intactness
+		nfinish=`grep -l -s "$finishreq" $subDir/log/*_np.log | wc -l`
+		#fi
+		# check equality among number of vcf, number of finished, and number of partitions
+		if [ $npartition -eq 0 ]; then # no partitions
+			if [ $nvcf -eq 0 ]; then
+				subdone=0
+			else
+				if [ $nfinish -eq 0 ]; then
+					subdone=0
+				fi
+				
+				if [ $nfinish -ne 0 ] || [ -z $finishreq ]; then
+					# merge
+					outvcf=`ls $subDir/vcf/*vcf -1`
+					cp $subDir/vcf/*vcf $subDir/
+					$np/nanopolish vcf2fasta --skip-checks -g $unpolished $outvcf > $subDir/polished/polished.$prefix.$i
+					action="Merged"
+				fi
+			fi
+		else
+			if [ $nvcf -ne $npartition ]; then
+				subdone=0
+			else
+				if [ $nfinish -ne $nvcf ]; then
+					subdone=0
+				fi
+
+				if [ $nfinish -eq $nvcf ] || [ ! -z "$finishreq" ]; then
+					vcflist=$subDir/3-vcf.list
+					mergevcf=$subDir/4-merged.vcf
+					ls $subDir/vcf/*vcf -1 | sed 's/^/-I /g' > $vcflist
+					$gatk/gatk CreateSequenceDictionary -R $unpolished
+					seqdict=`echo $unpolished | sed 's/fasta$/dict/g'`
+					$gatk/gatk MergeVcfs -O $mergevcf --arguments_file $vcflist -D $seqdict
+					rm $vcflist
+					# generate fasta
+					$np/nanopolish vcf2fasta --skip-checks -g $unpolished $mergevcf > $subDir/polished/polished.$prefix.$i
+					action="Merged"
+				fi
+			fi
+		fi
+
+		# report
+		if [ $subdone -eq 0 ] ||  [ $fasta -eq 0 ]; then
+			alldone=0
+			jobstatus="FAIL"
+		fi
+
+		if [ $fasta -eq 0 ]; then
+			fasnote="RAWmissing"
+		fi
+	
+		if [ $subdone -eq 0 ]; then
+			jobnote="VCFunfinished"
+		fi
+
+		# output notes:
+		echo -e $i"\t"$npartition"\t"$nvcf"\t"$nfinish"\t"$fasnote"\t"$jobnote"\t"$jobstatus"\t"$action >> $log
+	fi
+done
+
+# 
+if [ $alldone -eq 1 ]; then
+	echo "ALL FINISHED! READY FOR GENERATING POLISHED." >>$log
+else
+	echo "NOT ALL ARE READY. CHECK LOGS." >>$log
+fi
+

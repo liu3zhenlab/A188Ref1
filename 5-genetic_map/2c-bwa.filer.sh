@@ -1,0 +1,16 @@
+perl /homes/liu3zhen/local/slurm/bwa_filter/samparser.bwa.sbatch.pl \
+	--mem 6G \
+	--time 0-23:00:00 \
+	--threads 4 \
+	--indir ../1-aln \
+	--outdir . \
+ 	--parserScript "/homes/liu3zhen/local/slurm/bwa_filter/samparser.bwa.pl" \
+	--samtoolsModule "SAMtools/1.9-foss-2018b" \
+	--insert_min 50 \
+	--insert_max 800 \
+	--min_iden 50 \
+	--max_mismatch_perc 8 \
+	--max_tail_perc 10 \
+	--gap 0 \
+	--min_socre 40 \
+	--filefeature ".sam"
