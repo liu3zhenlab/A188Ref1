@@ -4,9 +4,9 @@ Liu lab at Kansas State University
 A188 genome assembly and annotation
 
 1. Sequencing data
-1) Nanopore data
+- Nanopore data
 Nanopore data were generated using ONT MinION with the FLO-MIN106 flowcells and the kit of SQK-LSK109. Basecalling was performed with Guppy (3.4.4).
-2) Illumina data
+- Illumina data
 A188 PE125: BGI  
 A188 PE250: Novogene
 
