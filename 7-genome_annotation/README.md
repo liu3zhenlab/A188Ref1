@@ -3,7 +3,7 @@ The maker annotation pipeline was selected for A188 genome annotation. During th
 
 #### resouces for learning how to use maker
 [maker introduction](http://www.yandell-lab.org/publications/pdf/maker_current_protocols.pdf)  
-[maker paper:](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2134774)  
+[maker paper](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2134774)  
 [tutorial_2014](http://weatherby.genetics.utah.edu/MAKER/wiki/index.php/MAKER_Tutorial_for_GMOD_Online_Training_2014)  
 [tutorial_2018](MAKER_Tutorial_for_WGS_Assembly_and_Annotation_Winter_School_2018)  
 [multiple protocols](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4286374)  
@@ -26,7 +26,7 @@ Three predictors were used:
 The configure file [maker_opts.ctl](maker_setting/round1/maker_opts.ctl) was used for round 1.  
 Briefly, the A188 assembled transcripts and B73Ref4 protein data were used as EST and protein evidence, respectively. The A188 EDTA repeat library was used as the repeat database. The parameters "est2genome=1" and "protein2genome=1" were set to directly produce gene models from transcripts and proteins. At this stage, no ab initio gene predictors were used.
 
-Slurm scheduler was used for running maker contig by contig. [Here]() is the running code.
+Slurm scheduler was used for running maker contig by contig. [Here](maker_setting/round1/1-all.sbatch) is the running code.
 
 **Problem**: parallel runs could have conflicting indexed databases or /tmp directories.  
 **Solutions**:  
