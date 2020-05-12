@@ -13,34 +13,34 @@ pred_pass=0 #use ab-initio predictions in maker_gff: 1 = yes, 0 = no
 other_pass=0 #passthrough anyything else in maker_gff: 1 = yes, 0 = no
 
 #-----EST Evidence (for best results provide a file for at least one)
-est=all_nano_ST2_merged.A188Ref1.v1.fasta
+est=/bulk/liu3zhen/research/A188Ref1/06-transcripts/3-merge/all_nano_ST2_merged.A188Ref1.v1.fasta
 altest= #EST/cDNA sequence file in fasta format from an alternate organism
 est_gff= #aligned ESTs or mRNA-seq from an external GFF3 file
 altest_gff= #aligned ESTs from a closly relate species in GFF3 format
 
 #-----Protein Homology Evidence (for best results provide a file for at least one)
-protein=Brachypodium_distachyon.Brachypodium_distachyon_v3.0.pep.all.fa,Arabidopsis_thaliana.TAIR10.pep.all.fa,Oryza_sativa.IRGSP-1.0.pep.all.fa,Sorghum_bicolor.Sorghum_bicolor_NCBIv3.pep.all.fa,Zea_mays.B73_RefGen_v4.pep.all.fa #protein sequence file in fasta format (i.e. from mutiple oransisms)
+protein=/bulk/liu3zhen/research/A188Ref1/14-maker/3-databases/3-proteins/Zea_mays.B73_RefGen_v4.pep.all.fa
 protein_gff=  #aligned protein homology evidence from an external GFF3 file
 
 #-----Repeat Masking (leave values blank to skip repeat masking)
 model_org= #select a model organism for RepBase masking in RepeatMasker
-rmlib=A188a3n2mpp2.fasta.mod.EDTA.TElib.fa   ### repeat library
+rmlib=/bulk/liu3zhen/research/A188Ref1/14-maker/3-databases/1-repeats/A188a3n2mpp2.fasta.mod.EDTA.TElib.fa   ### repeat library
 repeat_protein= #provide a fasta file of transposable element proteins for RepeatRunner
 rm_gff= #pre-identified repeat elements from an external GFF3 file
 prok_rm=0 #forces MAKER to repeatmask prokaryotes (no reason to change this), 1 = yes, 0 = no
 softmask=1 #use soft-masking rather than hard-masking in BLAST (i.e. seg and dust filtering)
-repeat_protein=  #provide a fasta file of transposable element proteins for RepeatRunner
+#repeat_protein=/home/liu3zhen/software/maker/maker/data/te_proteins.fasta #provide a fasta file of transposable element proteins for RepeatRunner
 
 #-----Gene Prediction
-snaphmm=snap.genome.hmm #SNAP HMM file
+snaphmm=
 gmhmm= #GeneMark HMM file
-augustus_species=maize5 #Augustus gene prediction species model
-fgenesh_par_file=Monocot.dat #FGENESH parameter file
+augustus_species=
+fgenesh_par_file=
 pred_gff= #ab-initio predictions from an external GFF3 file
 model_gff= #annotated gene models from an external GFF3 file (annotation pass-through)
-est2genome=0 #infer gene predictions directly from ESTs, 1 = yes, 0 = no
-protein2genome=0 #infer predictions from protein homology, 1 = yes, 0 = no
-trna=1 #find tRNAs with tRNAscan, 1 = yes, 0 = no
+est2genome=1 #infer gene predictions directly from ESTs, 1 = yes, 0 = no
+protein2genome=1 #infer predictions from protein homology, 1 = yes, 0 = no
+trna=0 #find tRNAs with tRNAscan, 1 = yes, 0 = no
 snoscan_rrna= #rRNA file to have Snoscan find snoRNAs
 unmask=0 #also run ab-initio prediction programs on unmasked sequence, 1 = yes, 0 = no
 
@@ -52,14 +52,14 @@ alt_peptide=C #amino acid used to replace non-standard amino acids in BLAST data
 cpus=1 #max number of cpus to use in BLAST and RepeatMasker (not for MPI, leave 1 when using MPI)
 
 #-----MAKER Behavior Options
-max_dna_len=200000 #length for dividing up contigs into chunks (increases/decreases memory usage)
+max_dna_len=300000 #length for dividing up contigs into chunks (increases/decreases memory usage)
 min_contig=1 #skip genome contigs below this length (under 10kb are often useless)
 
 pred_flank=200 #flank for extending evidence clusters sent to gene predictors
-pred_stats=1 #report AED and QI statistics for all predictions as well as models
+pred_stats=0 #report AED and QI statistics for all predictions as well as models
 AED_threshold=1 #Maximum Annotation Edit Distance allowed (bound by 0 and 1)
 min_protein=30 #require at least this many amino acids in predicted proteins
-alt_splice=1 #Take extra steps to try and find alternative splicing, 1 = yes, 0 = no
+alt_splice=0 #Take extra steps to try and find alternative splicing, 1 = yes, 0 = no
 always_complete=1 #extra steps to force start and stop codons, 1 = yes, 0 = no
 map_forward=0 #map names and attributes forward from old GFF3 genes, 1 = yes, 0 = no
 keep_preds=0 #Concordance threshold to add unsupported gene prediction (bound by 0 and 1)
@@ -67,7 +67,7 @@ keep_preds=0 #Concordance threshold to add unsupported gene prediction (bound by
 split_hit=20000 #length for the splitting of hits (expected max intron size for evidence alignments)
 single_exon=1 #consider single exon EST evidence when generating annotations, 1 = yes, 0 = no
 single_length=250 #min length required for single exon ESTs if 'single_exon is enabled'
-correct_est_fusion=1 #limits use of ESTs in annotation to avoid fusion genes
+correct_est_fusion=0 #limits use of ESTs in annotation to avoid fusion genes
 
 tries=2 #number of times to try a contig if there is a failure for some reason
 clean_try=0 #remove all data from previous run before retrying, 1 = yes, 0 = no
