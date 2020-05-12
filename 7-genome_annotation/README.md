@@ -2,15 +2,15 @@
 The maker annotation pipeline was selected for A188 genome annotation. During the process, we made many mistakes for parameter selection. The protocol from [darencard](https://gist.github.com/darencard/bb1001ac1532dd4225b030cf0cd61ce2) and the information provided by Dr. Bo Wang help establish the following procedure.
 
 #### resouces for learning how to use maker
-[maker introduction](http://www.yandell-lab.org/publications/pdf/maker_current_protocols.pdf)
-[maker paper:](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2134774)
-[tutorial_2014](http://weatherby.genetics.utah.edu/MAKER/wiki/index.php/MAKER_Tutorial_for_GMOD_Online_Training_2014)
-[tutorial_2018](MAKER_Tutorial_for_WGS_Assembly_and_Annotation_Winter_School_2018)
-[multiple protocols](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4286374)
-[MPI guide](https://informatics.fas.harvard.edu/maker-on-the-fasrc-cluster.html)
-[case 1](https://gist.github.com/darencard/bb1001ac1532dd4225b030cf0cd61ce2)
-[case 2](https://reslp.github.io/blog/My-MAKER-Pipeline)
-[parameter explanation](http://weatherby.genetics.utah.edu/MAKER/wiki/index.php/The_MAKER_control_files_explained)
+[maker introduction](http://www.yandell-lab.org/publications/pdf/maker_current_protocols.pdf)  
+[maker paper:](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2134774)  
+[tutorial_2014](http://weatherby.genetics.utah.edu/MAKER/wiki/index.php/MAKER_Tutorial_for_GMOD_Online_Training_2014)  
+[tutorial_2018](MAKER_Tutorial_for_WGS_Assembly_and_Annotation_Winter_School_2018)  
+[multiple protocols](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4286374)  
+[MPI guide](https://informatics.fas.harvard.edu/maker-on-the-fasrc-cluster.html)  
+[case 1](https://gist.github.com/darencard/bb1001ac1532dd4225b030cf0cd61ce2)  
+[case 2](https://reslp.github.io/blog/My-MAKER-Pipeline)  
+[parameter explanation](http://weatherby.genetics.utah.edu/MAKER/wiki/index.php/The_MAKER_control_files_explained)  
 
 #### Brief about sofeware packages
 The maker (2.31.10) conda was installed. Repeatmasker was replaced with an older version (4.0.7).  
