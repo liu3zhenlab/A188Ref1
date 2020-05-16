@@ -52,7 +52,7 @@ Train a snap model using [1c-snap.train.sh](1c-snap.train.sh), resulting in a hm
 NOTE: carefully check log files to make sure the running is successful.
 
 #### step 4: Run maker round 2
-The gene model set from round 1 used est2genome and protein2genome results of A188 transcripts and B73 proteins. For round 2, these two sets of evidence were not repeatedly used. Instead, gene models produced from round 1 was input as one of predicted gene models (pred_gff=<maker only gff3>). These gene models were competed with gene models predicted by three gene predictors. Additional ESTs from relative maize genotypes and proteins from closely related species were provided for gene model evaluation, as I understood, using AED.
+The gene model set from round 1 used est2genome and protein2genome results of A188 transcripts and B73 proteins. For round 2, these two sets of evidence were not repeatedly used. Instead, gene models produced from round 1 was input as one of predicted gene models (pred_gff=<maker only gff3>). These gene models were competed with gene models predicted by three gene predictors. Additional ESTs from relative maize genotypes and proteins from closely related species were provided for gene model evaluation.
 
 Here is the configure file [maker_opts.ctl](maker_setting/round2/maker_opts.ctl).  
 
