@@ -1,0 +1,171 @@
+---
+title: "A188Ref1a1_primary_transcripts"
+output:
+  html_document:
+    df_print: paged
+---
+
+Analysis is to identify a primary transcript for each gene. First, the following data were collected:  
+1. transcript expression across 12 tissues  
+2. evalue of of blastp with transcript swiss-prot  
+3. transcript lengths  
+
+```{r, echo = F}
+library(knitr)
+```
+
+### lengths of transcripts
+```{r, echo = F}
+# the list of transcripts
+#tcps0 <- read.delim("/bulk/liu3zhen/research/A188Ref1/14-maker/5-postmaker/3-confident/A188Ref1a1.confident.transcripts.list", header = F, stringsAsFactors = F)
+#colnames(tcps0) <- "Transcript"
+
+tcps1 <- read.delim("/bulk/liu3zhen/research/A188Ref1/14-maker/5-postmaker/3-confident/A188Ref1a1.confident.transcripts.lengths", header = F, stringsAsFactors = F)
+colnames(tcps1) <- c("Transcript", "Len")
+total_genes <- length(unique(gsub("_T.*", "", tcps1$Transcript)))
+```
+In total, `r nrow(tcps1)` transcripts of `r total_genes` are in the A188Ref1a1 confident genome annotation.
+
+### expression of transcripts
+```{r, echo = F}
+all_isoforms <- NULL
+expDir <- "/bulk/liu3zhen/research/projects/A188RNASeq/3-diverse.tissues/A188Ref1/3-star2A188Ref1_cufflinks/"
+expSubDir <- dir(path = expDir, pattern = "[123]$")
+for (esub in expSubDir) {
+  infile <- paste0(expDir, "/", esub, "/isoforms.fpkm_tracking")
+  isoform <- read.delim(infile, stringsAsFactors = F)
+  isoform <- isoform[, c("tracking_id", "coverage", "FPKM")]
+  colnames(isoform) <- c("Transcript", paste0(esub, c("_coverage", "_FPKM")))
+  # coverage: Estimate for the absolute depth of read coverage across the object
+  if (is.null(all_isoforms)) {
+    all_isoforms <- isoform
+  } else {
+    all_isoforms <- merge(all_isoforms, isoform, by = "Transcript", all = T)
+  }
+}
+
+# change NA to 0 if any
+for (ecol in 2:ncol(all_isoforms)) {
+  all_isoforms[is.na(all_isoforms[, ecol]), ecol] <- 0
+}
+
+all_isoforms$FPKM_mean <- rowMeans(all_isoforms[, grep("FPKM", colnames(all_isoforms))])
+all_isoforms$ExpDepth_mean <- rowMeans(all_isoforms[, grep("coverage", colnames(all_isoforms))])
+
+iso_exp <- all_isoforms[, c("Transcript", "ExpDepth_mean", "FPKM_mean")]
+iso_exp$Gene <- gsub("_.*", "", iso_exp$Transcript)
+
+iso_exp <- iso_exp[order(iso_exp$Gene, iso_exp$ExpDepth_mean, decreasing = T), ]
+rm(all_isoforms)
+```
+The transcript expression data from 12 diverse tissues of A188 were used to determine the mean of coverage (ExpDepth_mean) and the mean of FPKM (FPKM_mean) per transcript. Note that ExpDepth_mean is from coverage data calculated by Cufflinks, which estimates for the absolute expression depth of read coverage.
+
+### blastp data with swiss_prot
+```{r, echo = F}
+sp <- read.delim("/bulk/liu3zhen/research/A188Ref1/14-maker/6-functions/2-blastp/1o-confident.prot.blastp.evalues", header = F, stringsAsFactors = F)
+colnames(sp) <- c("Transcript", "Swissprot_evalue")
+```
+Blastp was used to map all proteins to the SWISS-Prot database with the evalue cutoff of 1e-6. The e-value data used are the e-value of the top hit of each transcript. Some transcripts did not have blastp hits due to the lack of qualified hits.
+
+### merge data and select primary transcripts based on the following standards:
+1. do not need to choose if only one transcript
+2. transcripts with the longest length, the highest coverage and FPKM (non-zero value), and the lowest blastp evalue
+3. transcripts with the highest non-zero FPKM and the lowest blastp evalue
+4. transcripts with the highest non-zero FPKM and the longest length
+5. transcripts with the highest non-zero FPKM (only)
+6. if data are not available to make a decision, select the one with the longest length
+
+```{r, echo = F}
+dm <- merge(tcps1, iso_exp, by = "Transcript", all = T)
+dm$ExpDepth_mean[is.na(dm$ExpDepth_mean)] <- 0
+dm$FPKM_mean[is.na(dm$FPKM_mean)] <- 0
+dm <- merge(dm, sp, by = "Transcript", all = T)
+
+# 1. single transcript
+ntranscripts <- table(dm$Gene)
+single_transcripts <- dm[dm$Gene %in% names(ntranscripts)[ntranscripts == 1], c("Gene", "Transcript")]
+single_transcripts$Type <- "single_transcript"
+multip_transcripts_genes <- unique(dm$Gene[dm$Gene %in% names(ntranscripts)[ntranscripts > 1]])
+
+# select based on various criteria. 
+dm2 <- dm[dm$Gene %in% multip_transcripts_genes, ]
+consensus_top_transcripts <- NULL
+exp_blastp_top_transcripts <- NULL
+exp_len_top_transcripts <- NULL
+exp_top_transcripts <- NULL
+len_blastp_top_transcripts <- NULL
+len_top_transcripts <- NULL
+for (egene in multip_transcripts_genes) {
+  egene_dm <- dm2[dm2$Gene %in% egene, ]
+  max_len_id <- which.max(egene_dm$Len)
+  max_dep_id <- which.max(egene_dm$ExpDepth_mean)
+  max_fpkm_id <- which.max(egene_dm$FPKM_mean)
+  min_evalue_id <- which.min(c(egene_dm$Swissprot_evalue, 1)) # if all NA, return id equaling the last id + 1
+  if (sum(egene_dm$FPKM_mean) > 0 & max_len_id == max_fpkm_id & max_fpkm_id == min_evalue_id) {
+    consensus_top_transcripts <- c(consensus_top_transcripts, egene_dm$Transcript[max_len_id])
+  } else if (sum(egene_dm$FPKM_mean) > 0 & max_fpkm_id == min_evalue_id) {
+    exp_blastp_top_transcripts <- c(exp_blastp_top_transcripts, egene_dm$Transcript[max_fpkm_id])
+  } else if (sum(egene_dm$FPKM_mean) > 0 & max_fpkm_id == max_len_id) {
+    exp_len_top_transcripts <- c(exp_len_top_transcripts, egene_dm$Transcript[max_fpkm_id])
+  } else if (sum(egene_dm$FPKM_mean) > 0) {
+    exp_top_transcripts <- c(exp_top_transcripts, egene_dm$Transcript[max_fpkm_id])
+  } else if (max_len_id == min_evalue_id) {
+    len_blastp_top_transcripts <- c(len_blastp_top_transcripts, egene_dm$Transcript[max_len_id])
+  } else {
+    len_top_transcripts <- c(len_top_transcripts, egene_dm$Transcript[max_len_id])
+  }
+}
+
+#length(consensus_top_transcripts)
+#length(exp_blastp_top_transcripts)
+#length(exp_len_top_transcripts)
+#length(exp_top_transcripts)
+#length(len_blastp_top_transcripts)
+#length(len_top_transcripts)
+
+#nrow(single_transcripts) + length(consensus_top_transcripts) + length(exp_blastp_top_transcripts) + length(exp_len_top_transcripts) + length(exp_top_transcripts) + length(len_blastp_top_transcripts) + length(len_top_transcripts)
+
+# module to convert transcript to 3-column data frame
+vec2df <- function(transcript, note) {
+  gene <- gsub("_T.*", "", transcript)
+  data.frame(Gene = gene,
+             Transcript = transcript,
+             Type = note)
+} 
+
+# convert each vector of transcripts to a data frame
+consensus <- vec2df(consensus_top_transcripts, "consensus_top")
+exp_blastp_top <- vec2df(exp_blastp_top_transcripts, "exp_blastp_top")
+exp_len_top <- vec2df(exp_len_top_transcripts, "exp_len_top")
+exp_top <- vec2df(exp_top_transcripts, "exp_only_top")
+len_blastp_top <- vec2df(len_blastp_top_transcripts, "len_blastp_top")
+len_top <- vec2df(len_top_transcripts, "len_only_top")
+
+# merge
+primary_transcripts <- rbind.data.frame(single_transcripts, consensus, exp_blastp_top, exp_len_top, exp_top, len_blastp_top, len_top)
+rownames(primary_transcripts) <- 1:nrow(primary_transcripts)
+
+# output
+# evidence
+write.table(dm, "1o-A188Ref1a1.confident.transcripts.expression.length.blastp.txt", row.names = F, sep = "\t", quote = F)
+
+# primary transcripts
+write.table(primary_transcripts, "A188Ref1a1.confident.primary.transcripts.txt",
+            row.names = F, quote = F, sep = "\t")
+
+# summary
+primary_stat <- data.frame(table(primary_transcripts$Type))
+colnames(primary_stat) <- c("Type", "Num_genes")
+kable(primary_stat, format = "html", caption = "Supporting types", row.names = F)
+```
+
+
+**Notes for output**  
+consensus_top: all expression, blastp, transcript length support the top transcript  
+exp_blastp_top: expression and blastp support the top transcript  
+exp_len_top: expression and transcript length support the top transcript  
+exp_only_top: only expression supports the top transcript  
+len_blastp_top: blastp and transcript length support the top transcript  
+len_only_top: only transcript length supports the top transcript   
+single_transcript: only one transcript of the gene
+
