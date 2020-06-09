@@ -1,5 +1,5 @@
 ## A188 maker annotation
-The maker annotation pipeline was selected for A188 genome annotation. During the process, we made many mistakes for parameter selection. The protocol from [darencard](https://gist.github.com/darencard/bb1001ac1532dd4225b030cf0cd61ce2) and the information provided by Dr. Bo Wang help establish the following procedure.
+The maker annotation pipeline was selected for A188 genome annotation. The protocol from [darencard](https://gist.github.com/darencard/bb1001ac1532dd4225b030cf0cd61ce2) and the information provided by Dr. Bo Wang help establish the following procedure.
 
 ### resouces for learning how to use maker
 [maker introduction](http://www.yandell-lab.org/publications/pdf/maker_current_protocols.pdf)  
