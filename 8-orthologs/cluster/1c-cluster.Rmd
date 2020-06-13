@@ -1,0 +1,95 @@
+---
+title: "A188 gene clusters"
+output:
+  html_document:
+    df_print: paged
+---
+
+OrthoMCL analysis identified groups of paralogs of A188. This analysis is to find gene clusters on the reference genome.
+
+```{r}
+min_paralogs <- 3
+max_neighbor_distance <- 250000
+max_neighbor_distance_kb <- max_neighbor_distance / 1000
+groups <- read.delim("/homes/liu3zhen/references/A188Ref1/homologs/A188Ref1/A188.B73.orthoparalogs.groups.parse", header = F)
+genes <- read.delim("/homes/liu3zhen/references/A188Ref1/function/A188Ref1a1.confident.genes.info")
+output_cluster_file <- paste0("A188Ref1.gene.clusters.gte", min_paralogs, ".lte.", max_neighbor_distance_kb, "kb")
+```
+
+### Algorithm  
+Let us set the minimum of paralogs of a cluster is `r min_paralogs`.  
+1. find groups with at least `r min_paralogs` genes for A188  
+2. find gene clusters each of which contains at least `r min_paralogs` paralogs with no more than `r max_neighbor_distance_kb` kb apart between two neighboring genes  
+
+```{r, echo = F}
+a188g <- groups[groups[, 2] == "A188", c(1, 4)]
+colnames(a188g) <- c("Group", "Gene")
+group_counts <- table(a188g$Group)
+multi_genes_groups <- names(group_counts[group_counts >= min_paralogs])
+#multi_genes_a188g <- a188g[a188g$Group %in% multi_genes_groups, ]
+#multi_genes_a188g_info <- merge(multi_genes_a188g, genes, by = "Gene")
+
+all_clusters <- NULL
+cluster_num <- 1
+for (egroup in multi_genes_groups) {
+  group_genes <- a188g[a188g$Group == egroup, "Gene"]
+  group_genes_info <- genes[genes$Gene %in% group_genes, ]
+
+  # per chromosome
+  for (echr in unique(group_genes_info$Chr)) {
+    chr_data <- group_genes_info[group_genes_info$Chr == echr, ]
+    if (nrow(chr_data) >= min_paralogs) {
+      chr_data <- chr_data[order(chr_data$Start), ] # sort
+      cluster_start <- 1
+      cluster_end <- 1
+      for (i in 2:nrow(chr_data)) {
+        neighbor_dist <- chr_data[i, "Start"] - chr_data[i - 1, "End"]
+        if (neighbor_dist > max_neighbor_distance) {
+          if (cluster_end - cluster_start + 1 >= min_paralogs) {
+            # cluster output
+            cluster_df <- chr_data[cluster_start:cluster_end, ]
+            cluster_df$Cluster <- cluster_num
+            # merge clusters
+            if (is.null(all_clusters)) {
+              all_clusters <- cluster_df
+            } else {
+              all_clusters <- rbind(all_clusters, cluster_df)
+            }
+            # count # of clusters discovered so far
+            cluster_num <- cluster_num + 1
+          }
+          # reset start for a new possible cluster
+          cluster_start <- i
+        } else {
+          cluster_end <- i
+        }
+      } # finish loop
+      
+      # last one
+      if (cluster_end - cluster_start + 1 >= min_paralogs) {
+        # cluster output
+        cluster_df <- chr_data[cluster_start:cluster_end, ]
+        cluster_df$Cluster <- cluster_num
+        # count # of clusters discovered so far
+        cluster_num <- cluster_num + 1
+        # merge clusters
+        if (is.null(all_clusters)) {
+            all_clusters <- cluster_df
+        } else {
+            all_clusters <- rbind(all_clusters, cluster_df)
+        }
+      } # output last one if any
+    }
+  }
+}
+# change row names
+rownames(all_clusters) <- 1:nrow(all_clusters)
+write.table(all_clusters, output_cluster_file, row.names = F, quote = F, sep = "\t")
+```
+
+In total, **`r cluster_num - 1`** clusters were found.  
+```{r, echo = F}
+hist(table(all_clusters$Cluster), xlab = "Number genes per cluster",
+     ylab = "Number of clusters", main = "gene clusters in A188Ref1")
+```
+

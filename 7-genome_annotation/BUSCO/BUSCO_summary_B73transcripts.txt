@@ -1,0 +1,15 @@
+# BUSCO version is: 3.0.2 
+# The lineage dataset is: liliopsida_odb10 (Creation date: 2017-12-01, number of species: 18, number of BUSCOs: 3278)
+# To reproduce this run: python /homes/liu3zhen/.conda/envs/asm/bin/run_busco -i /homes/liu3zhen/references/B73Ref4/genemodel2/Zea_mays.B73_RefGen_v4.cdna.all.fa -o B73transcripts -l /bulk/liu3zhen/research/A188asm/33-BUSCO/liliopsida_odb10/ -m transcriptome -c 32
+#
+# Summarized benchmarking in BUSCO notation for file /homes/liu3zhen/references/B73Ref4/genemodel2/Zea_mays.B73_RefGen_v4.cdna.all.fa
+# BUSCO was run in mode: transcriptome
+
+	C:97.1%[S:43.1%,D:54.0%],F:1.7%,M:1.2%,n:3278
+
+	3184	Complete BUSCOs (C)
+	1414	Complete and single-copy BUSCOs (S)
+	1770	Complete and duplicated BUSCOs (D)
+	57	Fragmented BUSCOs (F)
+	37	Missing BUSCOs (M)
+	3278	Total BUSCO groups searched

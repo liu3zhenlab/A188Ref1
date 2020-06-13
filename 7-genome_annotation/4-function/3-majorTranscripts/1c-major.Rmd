@@ -1,11 +1,11 @@
 ---
-title: "A188Ref1a1_primary_transcripts"
+title: "A188Ref1a1_major_transcripts"
 output:
   html_document:
     df_print: paged
 ---
 
-Analysis is to identify a primary transcript for each gene. First, the following data were collected:  
+Analysis is to identify a major transcript for each gene. First, the following data were collected:  
 1. transcript expression across 12 tissues  
 2. evalue of of blastp with transcript swiss-prot  
 3. transcript lengths  
@@ -29,7 +29,7 @@ In total, `r nrow(tcps1)` transcripts of `r total_genes` are in the A188Ref1a1 c
 ### expression of transcripts
 ```{r, echo = F}
 all_isoforms <- NULL
-expDir <- "/bulk/liu3zhen/research/projects/A188RNASeq/3-diverse.tissues/A188Ref1/3-star2A188Ref1_cufflinks/"
+expDir <- "/bulk/liu3zhen/research/projects/A188RNASeq/3-diverse.tissues/A188Ref1/2-star2A188Ref1_cufflinks"
 expSubDir <- dir(path = expDir, pattern = "[123]$")
 for (esub in expSubDir) {
   infile <- paste0(expDir, "/", esub, "/isoforms.fpkm_tracking")
@@ -67,7 +67,7 @@ colnames(sp) <- c("Transcript", "Swissprot_evalue")
 ```
 Blastp was used to map all proteins to the SWISS-Prot database with the evalue cutoff of 1e-6. The e-value data used are the e-value of the top hit of each transcript. Some transcripts did not have blastp hits due to the lack of qualified hits.
 
-### merge data and select primary transcripts based on the following standards:
+### merge data and select major transcripts based on the following standards:
 1. do not need to choose if only one transcript
 2. transcripts with the longest length, the highest coverage and FPKM (non-zero value), and the lowest blastp evalue
 3. transcripts with the highest non-zero FPKM and the lowest blastp evalue
@@ -142,21 +142,21 @@ len_blastp_top <- vec2df(len_blastp_top_transcripts, "len_blastp_top")
 len_top <- vec2df(len_top_transcripts, "len_only_top")
 
 # merge
-primary_transcripts <- rbind.data.frame(single_transcripts, consensus, exp_blastp_top, exp_len_top, exp_top, len_blastp_top, len_top)
-rownames(primary_transcripts) <- 1:nrow(primary_transcripts)
+major_transcripts <- rbind.data.frame(single_transcripts, consensus, exp_blastp_top, exp_len_top, exp_top, len_blastp_top, len_top)
+rownames(major_transcripts) <- 1:nrow(major_transcripts)
 
 # output
 # evidence
 write.table(dm, "1o-A188Ref1a1.confident.transcripts.expression.length.blastp.txt", row.names = F, sep = "\t", quote = F)
 
-# primary transcripts
-write.table(primary_transcripts, "A188Ref1a1.confident.primary.transcripts.txt",
+# major transcripts
+write.table(major_transcripts, "A188Ref1a1.confident.major.transcripts.txt",
             row.names = F, quote = F, sep = "\t")
 
 # summary
-primary_stat <- data.frame(table(primary_transcripts$Type))
-colnames(primary_stat) <- c("Type", "Num_genes")
-kable(primary_stat, format = "html", caption = "Supporting types", row.names = F)
+major_stat <- data.frame(table(major_transcripts$Type))
+colnames(major_stat) <- c("Type", "Num_genes")
+kable(major_stat, format = "html", caption = "Supporting types", row.names = F)
 ```
 
 
