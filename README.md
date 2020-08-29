@@ -18,5 +18,11 @@ A188 PE250: Novogene
 
 5. Genetic mapping for further scaffolding
 
-6. Maker genome annotation
+6. Contigs concatenation
+
+7. Maker genome annotation
+
+8. Othologs
+
+9. Analyses related to the manuscript
 
