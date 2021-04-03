@@ -26,3 +26,6 @@ A188 PE250: Novogene
 
 9. Analyses related to the manuscript
 
+X. SyRI structrual variation related to other maize genomes
+
+
